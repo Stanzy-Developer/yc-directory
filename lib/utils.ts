@@ -20,3 +20,7 @@ export const createInitials = (props: createInitialsProps) => {
     return props.split(' ').map(word => word[0]).join("").toUpperCase().slice(0, 2)
   }
 }
+
+export function parseServerActionResponse<T>(response: T) {
+  return JSON.parse(JSON.stringify(response));
+}

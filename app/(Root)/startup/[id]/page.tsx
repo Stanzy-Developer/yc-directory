@@ -1,37 +1,44 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { createInitials, formatDate } from "@/lib/utils";
+import { Suspense } from "react";
 import { client } from "@/sanity/lib/client";
-import { STARTUP_BY_ID_QUERY } from "@/sanity/lib/queries";
-import Link from "next/link";
+import {
+  PLAYLIST_BY_SLUG_QUERY,
+  STARTUP_BY_ID_QUERY,
+} from "@/sanity/lib/queries";
 import { notFound } from "next/navigation";
-import React, { Suspense } from "react";
-import { auth } from "@/app/auth";
+import { formatDate } from "@/lib/utils";
+import Link from "next/link";
+import Image from "next/image";
+
 import markdownit from "markdown-it";
 import { Skeleton } from "@/components/ui/skeleton";
-import Views from "@/components/View";
+import View from "@/components/View";
+import StartupCard, { StartupTypeCard } from "@/components/StartupCard";
 
 const md = markdownit();
 
 export const experimental_ppr = true;
-type Params = Promise<{ id: string }>;
-const page = async ({ params }: { params: Params }) => {
-  const { id } = await params;
-  const session = await auth();
 
-  const post = await client.fetch(STARTUP_BY_ID_QUERY, { id });
+const Page = async ({ params }: { params: Promise<{ id: string }> }) => {
+  const id = (await params).id;
+
+  const [post, select] = await Promise.all([
+    client.fetch(STARTUP_BY_ID_QUERY, { id }),
+    client.fetch(PLAYLIST_BY_SLUG_QUERY, {
+      slug: "editor-picks-new",
+    }),
+  ]);
 
   if (!post) return notFound();
 
-  const parseContent = md.render(post?.pitch || "");
-
-  const MarkdownContent = { __html: parseContent };
+  const parsedContent = md.render(post?.pitch || "");
 
   return (
     <>
       <section className="pink_container !min-h-[230px]">
-        <p className="tag text-black">{formatDate(post?._createdAt)}</p>
-        <h1 className="heading">This is a startup number {post.title}</h1>
-        <p className="subheading !max-w-5xl">{post.description}</p>
+        <p className="tag">{formatDate(post?._createdAt)}</p>
+
+        <h1 className="heading">{post.title}</h1>
+        <p className="sub-heading !max-w-5xl">{post.description}</p>
       </section>
 
       <section className="section_container">
@@ -47,14 +54,15 @@ const page = async ({ params }: { params: Params }) => {
               href={`/user/${post.author?._id}`}
               className="flex gap-2 items-center mb-3"
             >
-              <Avatar>
-                <AvatarImage src={post.author.image} alt="profile" />
-                <AvatarFallback className="bg-black">
-                  {createInitials(session?.user?.name)}
-                </AvatarFallback>
-              </Avatar>
+              <Image
+                src={post.author.image}
+                alt="avatar"
+                width={64}
+                height={64}
+                className="rounded-full drop-shadow-lg"
+              />
 
-              <div className="">
+              <div>
                 <p className="text-20-medium">{post.author.name}</p>
                 <p className="text-16-medium !text-black-300">
                   @{post.author.username}
@@ -66,26 +74,36 @@ const page = async ({ params }: { params: Params }) => {
           </div>
 
           <h3 className="text-30-bold">Pitch Details</h3>
-          {parseContent ? (
+          {parsedContent ? (
             <article
               className="prose max-w-4xl font-work-sans break-all"
-              dangerouslySetInnerHTML={MarkdownContent}
+              dangerouslySetInnerHTML={{ __html: parsedContent }}
             />
           ) : (
-            <p className="no-result"> No details provided</p>
+            <p className="no-result">No details provided</p>
           )}
         </div>
 
         <hr className="divider" />
 
-        {/* TODO: EDITOR SELECTED STARTUPS  */}
-      </section>
+        {select?.length > 0 && (
+          <div className="max-w-4xl mx-auto">
+            <p className="text-30-semibold">Editor Picks</p>
 
-      <Suspense fallback={<Skeleton className="view_skeleton" />}>
-        <Views id={id} />
-      </Suspense>
+            <ul className="mt-7 card_grid-sm">
+              {select.map((post: StartupTypeCard, i: number) => (
+                <StartupCard key={i} post={post} />
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <Suspense fallback={<Skeleton className="view_skeleton" />}>
+          <View id={id} />
+        </Suspense>
+      </section>
     </>
   );
 };
 
-export default page;
+export default Page;
