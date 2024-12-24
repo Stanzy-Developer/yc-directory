@@ -7,8 +7,20 @@ import GitHub from "next-auth/providers/github"
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [GitHub],
   callbacks: {
-    async signIn({ user: { name, email, image }, profile: {id, login, bio} }: {user: {name: string, email: string, image: string}, profile: {id: string, login: string, bio: string}}) {
-      const existingUser = await client.fetch(AUTHOR_BY_GITHUB_ID_QUERY, { id: id });
+    async signIn({
+      user: { name, email, image },
+      profile: { id, login, bio } }:
+      {
+        user:
+        { name: string, email: string, image: string },
+        profile:
+        { id: string, login: string, bio: string }
+      }) {
+        const existingUser = await client
+        .withConfig({ useCdn: false })
+        .fetch(AUTHOR_BY_GITHUB_ID_QUERY, {
+          id,
+        });
 
       if (!existingUser) {
         await writeClient.create(
@@ -25,13 +37,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return true;
     },
 
-    async jwt({ token, account, profile }: {token: { id: string }, account: { provider: string, type: string }, profile: { id: string, login: string, bio?: string }}) {
+    async jwt({ token, account, profile }:
+      {
+        token: { id: string },
+        account: { provider: string, type: string },
+        profile: { id: string, login: string, bio?: string }
+      }) {
       if (account && profile) {
-        const user = await client.fetch(AUTHOR_BY_GITHUB_ID_QUERY, { id: profile?.id })
+        const user = await client
+          .withConfig({ useCdn: false })
+          .fetch(AUTHOR_BY_GITHUB_ID_QUERY, {
+            id: profile?.id,
+          });
         
-        if (!user) {
-          token.id = user._id
-        }
+          token.id = user?._id;
       }
       return token;
     },
@@ -40,6 +59,5 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       Object.assign(session, { id: token.id })
       return session;
     }
-
   }
 })

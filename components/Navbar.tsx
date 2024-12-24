@@ -8,7 +8,7 @@ import { createInitials } from "@/lib/utils";
 const Navbar = async () => {
   const session = await auth();
 
-  console.log(session?.id);
+  console.log(session);
 
   return (
     <header className="px-5 py-3 bg-white shadow-sm font-work-sans">
