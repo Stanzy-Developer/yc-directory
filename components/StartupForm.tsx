@@ -12,13 +12,21 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { createPitch } from "@/lib/actions";
 
+// Add this type for the form state
+type FormState = {
+  error: string;
+  status: "INITIAL" | "SUCCESS" | "ERROR";
+  _id?: string;
+};
+
 const StartupForm = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pitch, setPitch] = useState("");
   const { toast } = useToast();
   const router = useRouter();
 
-  const handleFormSubmit = async (prevState: any, formData: FormData) => {
+  // Fix the any type by using FormData and FormState
+  const handleFormSubmit = async (prevState: FormState, formData: FormData) => {
     try {
       const formValues = {
         title: formData.get("title") as string,
@@ -71,7 +79,8 @@ const StartupForm = () => {
     }
   };
 
-  const [state, formAction, isPending] = useActionState(handleFormSubmit, {
+  // Remove the unused state variable by destructuring only what we need
+  const [, formAction, isPending] = useActionState(handleFormSubmit, {
     error: "",
     status: "INITIAL",
   });
